@@ -1,11 +1,12 @@
 from bottle import Bottle, run, response, request, template
 from json import dumps as jdumps
 from db import DatabaseConnection
+from auth import Auth, UserType, UserAlreadyExistsException
 import atexit
 
 app = Bottle()
 
-DBConn=DatabaseConnection('db');
+DBConn=DatabaseConnection('db')
 
 def cleanup():
     conn=DBConn.get_conn()
@@ -36,9 +37,21 @@ def login():
 
 @app.post('/register')
 def do_register():
+    response.content_type='application/json'
     username=request.forms.get('username')
     password=request.forms.get('password')
-    password_confirm=request.forms.get('password_confirm')
+    # password_confirm=request.forms.get('password_confirm')
+    auther=Auth(DBConn.get_conn())
+    user: UserType = {'username':username, 'password': password}
+    try:
+        auther.register(user)
+        return jdumps({ 'success': True, 'message': "User registration successful!" })
+    except UserAlreadyExistsException:
+        response.status_code=400
+        return jdumps({ 'success': False, 'message': "User with provided username {} already exists".format(username) })
+    except:
+        response.status_code=500
+        return jdumps({ 'success': False, 'message': "Internal server error" })
 
 
 # @app.post('/post')
